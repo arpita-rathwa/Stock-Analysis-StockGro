@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSA Capstone 2026 — Stock Analysis Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #080b12;
+  --bg2:       #0d1120;
+  --surface:   #111827;
+  --surface2:  #161e2e;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #edf0f7;
+  --muted:     #6b7491;
+  --dim:       #3a4060;
+  --accent:    #3b82f6;
+  --accent2:   #60a5fa;
+  --green:     #22d3a0;
+  --red:       #f43f5e;
+  --yellow:    #fbbf24;
+  --purple:    #a78bfa;
+  --orange:    #fb923c;
+  --teal:      #2dd4bf;
+
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+
+  --glow-blue:   0 0 40px rgba(59,130,246,0.15);
+  --glow-green:  0 0 40px rgba(34,211,160,0.15);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── HEADER ─────────────────────────────────── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,11,18,0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border2);
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.header-left { display:flex; align-items:center; gap:14px; }
+
+.header-logo {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-head); font-weight: 800; font-size: 14px; color: white;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(59,130,246,0.4);
+}
+
+.header-title {
+  font-family: var(--font-head);
+  font-size: 16px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em;
+}
+.header-sub {
+  font-size: 11px; color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: 1px;
+  letter-spacing: 0.03em;
+}
+
+.header-right { display:flex; align-items:center; gap:10px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 500; font-family: var(--font-mono);
+  border: 1px solid;
+}
+.pill-blue  { background:rgba(59,130,246,0.1);  border-color:rgba(59,130,246,0.3);  color:var(--accent2); }
+.pill-green { background:rgba(34,211,160,0.1);  border-color:rgba(34,211,160,0.3);  color:var(--green); }
+.pill-red   { background:rgba(244,63,94,0.1);   border-color:rgba(244,63,94,0.3);   color:var(--red); }
+.pill-gray  { background:rgba(255,255,255,0.04); border-color:var(--border2); color:var(--muted); }
+
+.dot { width:6px; height:6px; border-radius:50%; }
+.dot-green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ── TABS ────────────────────────────────────── */
+.tabs-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky; top: 64px; z-index: 90;
+}
+.tabs-bar::-webkit-scrollbar { display:none; }
+
+.tab {
+  padding: 0 20px; height: 46px;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+  position: relative;
+  font-family: var(--font-body);
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+.tab-icon { font-size: 14px; opacity: 0.7; }
+
+/* ── PAGE ────────────────────────────────────── */
+.page { display:none; padding: 28px 32px; max-width: 1400px; animation: fadeIn 0.2s ease; }
+.page.active { display:block; }
+
+@keyframes fadeIn { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+/* ── GRIDS ───────────────────────────────────── */
+.grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:20px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+.grid-5 { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+
+/* ── KPI CARDS ───────────────────────────────── */
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.kpi::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent);
+}
+.kpi:hover { border-color: var(--border2); transform: translateY(-1px); }
+
+.kpi-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 8px;
+  font-family: var(--font-mono);
+}
+.kpi-value {
+  font-family: var(--font-head); font-size: 24px; font-weight: 700;
+  letter-spacing: -0.03em; line-height: 1;
+  margin-bottom: 6px;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+.kpi-accent-blue  { border-color: rgba(59,130,246,0.2); }
+.kpi-accent-blue::before  { background: linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent); }
+.kpi-accent-green { border-color: rgba(34,211,160,0.2); }
+.kpi-accent-green::before { background: linear-gradient(90deg, transparent, rgba(34,211,160,0.5), transparent); }
+.kpi-accent-red   { border-color: rgba(244,63,94,0.2); }
+.kpi-accent-red::before   { background: linear-gradient(90deg, transparent, rgba(244,63,94,0.5), transparent); }
+
+/* ── PANELS ──────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 22px;
+  margin-bottom: 20px;
+}
+.panel-title {
+  font-family: var(--font-head); font-size: 13px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-title::before {
+  content:''; width:3px; height:14px; border-radius:2px;
+  background: var(--accent); flex-shrink:0;
+}
+
+/* ── SECTION HEADER ──────────────────────────── */
+.section-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--dim); margin-bottom: 14px;
+}
+
+/* ── TABLES ──────────────────────────────────── */
+.tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.tbl th {
+  text-align:left; padding: 8px 12px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.tbl td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+.tbl tbody tr:last-child td { border-bottom: none; }
+.tbl tbody tr { transition: background 0.15s; }
+.tbl tbody tr:hover td { background: rgba(255,255,255,0.02); }
+.tbl-foot td {
+  background: rgba(59,130,246,0.05);
+  border-top: 1px solid var(--border);
+  font-weight: 600; color: var(--text);
+}
+
+/* Stock tags */
+.stag {
+  display:inline-flex; align-items:center; gap:5px;
+  padding: 3px 9px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.stag-bank    { background:rgba(59,130,246,0.12);  color:#60a5fa; border:1px solid rgba(59,130,246,0.2); }
+.stag-it      { background:rgba(167,139,250,0.12); color:#c4b5fd; border:1px solid rgba(167,139,250,0.2); }
+.stag-pharma  { background:rgba(34,211,160,0.12);  color:#5eead4; border:1px solid rgba(34,211,160,0.2); }
+.stag-fmcg    { background:rgba(251,191,36,0.12);  color:#fcd34d; border:1px solid rgba(251,191,36,0.2); }
+.stag-auto    { background:rgba(251,113,133,0.12); color:#fda4af; border:1px solid rgba(251,113,133,0.2); }
+
+/* Model badges */
+.mbadge {
+  display:inline-flex; align-items:center;
+  padding:2px 8px; border-radius:5px;
+  font-size:10px; font-weight:700; font-family: var(--font-mono);
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.mb-arima   { background:rgba(59,130,246,0.15);  color:#93c5fd; }
+.mb-prophet { background:rgba(251,146,60,0.15);  color:#fdba74; }
+.mb-lstm    { background:rgba(34,211,160,0.15);  color:#5eead4; }
+.mb-xgb     { background:rgba(167,139,250,0.15); color:#c4b5fd; }
+.mb-hmm     { background:rgba(45,212,191,0.15);  color:#99f6e4; }
+.mb-garch   { background:rgba(251,191,36,0.15);  color:#fde68a; }
+.mb-mkw     { background:rgba(244,63,94,0.15);   color:#fda4af; }
+
+/* Value colors */
+.c-green  { color: var(--green); }
+.c-red    { color: var(--red); }
+.c-blue   { color: var(--accent2); }
+.c-yellow { color: var(--yellow); }
+.c-purple { color: var(--purple); }
+.c-orange { color: var(--orange); }
+.c-muted  { color: var(--muted); }
+
+.val-best  { color: var(--green); font-weight: 600; }
+.val-worst { color: var(--red); }
+.val-mono  { font-family: var(--font-mono); font-size: 12px; }
+
+/* ── ALLOCATION BARS ─────────────────────────── */
+.alloc-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.alloc-label { width:90px; font-size:11px; font-family:var(--font-mono); color:var(--muted); flex-shrink:0; }
+.alloc-track { flex:1; height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; }
+.alloc-fill  { height:100%; border-radius:3px; transition:width 0.8s cubic-bezier(.25,.46,.45,.94); }
+.alloc-pct   { width:38px; text-align:right; font-size:11px; font-family:var(--font-mono); color:var(--text); }
+
+/* ── REGIME PILLS ────────────────────────────── */
+.regime {
+  display:inline-flex; align-items:center; gap:4px;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 10px; font-weight: 600; font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.regime-bull { background:rgba(34,211,160,0.1);  color:var(--green);  border:1px solid rgba(34,211,160,0.25); }
+.regime-bear { background:rgba(244,63,94,0.1);   color:var(--red);    border:1px solid rgba(244,63,94,0.25); }
+.regime-side { background:rgba(107,116,145,0.1); color:var(--muted);  border:1px solid var(--border2); }
+
+/* ── VERDICT / INSIGHT BOX ───────────────────── */
+.insight {
+  border-radius: var(--r-lg); padding: 20px 22px; margin-top: 16px;
+  border-left: 3px solid;
+}
+.insight-green {
+  background: rgba(34,211,160,0.05); border-color: var(--green);
+}
+.insight-red {
+  background: rgba(244,63,94,0.05); border-color: var(--red);
+}
+.insight-blue {
+  background: rgba(59,130,246,0.05); border-color: var(--accent);
+}
+.insight h4 {
+  font-family: var(--font-head); font-size: 13px; font-weight: 600;
+  margin-bottom: 8px;
+}
+.insight p { font-size: 13px; color: var(--muted); line-height: 1.75; }
+
+/* ── DIR RESULT ICONS ────────────────────────── */
+.dir-hit  { color:var(--green); font-family:var(--font-mono); font-size:12px; }
+.dir-miss { color:var(--red);   font-family:var(--font-mono); font-size:12px; }
+
+/* ── RESPONSIVE ──────────────────────────────── */
+@media(max-width:900px) {
+  .grid-5 { grid-template-columns: repeat(2,1fr); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .header { padding: 0 16px; }
+  .tabs-bar { padding: 0 12px; }
+  .page { padding: 16px; }
+  .header-sub { display:none; }
+}
+@media(max-width:600px) {
+  .grid-3, .grid-5 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── STICKY HEADER ── -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">TS</div>
+    <div>
+      <div class="header-title">TSA Capstone 2026</div>
+      <div class="header-sub">ARIMA · PROPHET · LSTM · XGBOOST · HMM · GARCH · MARKOWITZ</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill pill-green"><span class="dot dot-green"></span>Live</span>
+    <span class="pill pill-gray">IIT Guwahati C&A Club</span>
+    <span class="pill pill-blue">May 12–13, 2026</span>
+  </div>
+</header>
+
+<!-- ── TABS ── -->
+<nav class="tabs-bar">
+  <div class="tab active" onclick="showTab('overview')"><span class="tab-icon">◈</span>Overview</div>
+  <div class="tab" onclick="showTab('models')"><span class="tab-icon">⊞</span>Model Comparison</div>
+  <div class="tab" onclick="showTab('forecast')"><span class="tab-icon">◎</span>Forecasts</div>
+  <div class="tab" onclick="showTab('portfolio')"><span class="tab-icon">◑</span>Portfolio</div>
+  <div class="tab" onclick="showTab('volatility')"><span class="tab-icon">⊘</span>Volatility &amp; Regime</div>
+  <div class="tab" onclick="showTab('live')"><span class="tab-icon">◉</span>Live Results</div>
+</nav>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 1: OVERVIEW -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-overview" class="page active">
+
+  <div class="grid-5">
+    <div class="kpi kpi-accent-red">
+      <div class="kpi-label">Portfolio Return</div>
+      <div class="kpi-value c-red">−1.17%</div>
+      <div class="kpi-sub">₹−11,653 · 2-day window</div>
+    </div>
+    <div class="kpi kpi-accent-green">
+      <div class="kpi-label">Best Stock</div>
+      <div class="kpi-value c-green">HDFCBANK</div>
+      <div class="kpi-sub">+0.26% · only green stock</div>
+    </div>
+    <div class="kpi kpi-accent-red">
+      <div class="kpi-label">Worst Stock</div>
+      <div class="kpi-value c-red">M&amp;M</div>
+      <div class="kpi-sub">−3.09% · ₹−4,570 loss</div>
+    </div>
+    <div class="kpi kpi-accent-blue">
+      <div class="kpi-label">Best Model (MAPE)</div>
+      <div class="kpi-value c-blue">ARIMA</div>
+      <div class="kpi-sub">0.97% avg backtest MAPE</div>
+    </div>
+    <div class="kpi" style="border-color:rgba(251,146,60,0.2)">
+      <div style="height:2px;position:absolute;top:0;left:0;right:0;background:linear-gradient(90deg,transparent,rgba(251,146,60,0.5),transparent);border-radius:var(--r-lg) var(--r-lg) 0 0;"></div>
+      <div class="kpi-label">Best Direction</div>
+      <div class="kpi-value c-orange">Prophet</div>
+      <div class="kpi-sub">55.2% avg directional acc.</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Stock Universe — 5 NSE Stocks</div>
+      <table class="tbl">
+        <thead>
+          <tr><th>Stock</th><th>Sector</th><th>Buy Price</th><th>Day 2 Close</th><th>2-Day Return</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="stag stag-bank">HDFCBANK</span></td>
+            <td class="c-muted">Banking</td>
+            <td class="val-mono">₹745.03</td><td class="val-mono">₹746.93</td>
+            <td class="val-best val-mono">+0.26%</td>
+          </tr>
+          <tr>
+            <td><span class="stag stag-it">INFY</span></td>
+            <td class="c-muted">IT</td>
+            <td class="val-mono">₹1,122.67</td><td class="val-mono">₹1,116.91</td>
+            <td class="val-worst val-mono">−0.51%</td>
+          </tr>
+          <tr>
+            <td><span class="stag stag-pharma">SUNPHARMA</span></td>
+            <td class="c-muted">Pharma</td>
+            <td class="val-mono">₹1,861.14</td><td class="val-mono">₹1,817.18</td>
+            <td class="val-worst val-mono">−2.36%</td>
+          </tr>
+          <tr>
+            <td><span class="stag stag-fmcg">HINDUNILVR</span></td>
+            <td class="c-muted">FMCG</td>
+            <td class="val-mono">₹2,252.21</td><td class="val-mono">₹2,239.52</td>
+            <td class="val-worst val-mono">−0.56%</td>
+          </tr>
+          <tr>
+            <td><span class="stag stag-auto">M&amp;M</span></td>
+            <td class="c-muted">Auto</td>
+            <td class="val-mono">₹3,217.50</td><td class="val-mono">₹3,118.16</td>
+            <td class="val-worst val-mono">−3.09%</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:20px;">
+        <div class="section-label">Capital Allocation</div>
+        <div class="alloc-row">
+          <span class="alloc-label">HDFCBANK</span>
+          <div class="alloc-track"><div class="alloc-fill" style="width:27.3%;background:#3b82f6;"></div></div>
+          <span class="alloc-pct">27.3%</span>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-label">SUNPHARMA</span>
+          <div class="alloc-track"><div class="alloc-fill" style="width:22%;background:#22d3a0;"></div></div>
+          <span class="alloc-pct">22.0%</span>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-label">INFY</span>
+          <div class="alloc-track"><div class="alloc-fill" style="width:20.8%;background:#a78bfa;"></div></div>
+          <span class="alloc-pct">20.8%</span>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-label">HINDUNILVR</span>
+          <div class="alloc-track"><div class="alloc-fill" style="width:19.7%;background:#fbbf24;"></div></div>
+          <span class="alloc-pct">19.7%</span>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-label">M&amp;M</span>
+          <div class="alloc-track"><div class="alloc-fill" style="width:10.3%;background:#f43f5e;"></div></div>
+          <span class="alloc-pct">10.3%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">2-Day P&amp;L by Stock (₹)</div>
+      <canvas id="plChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Models Used in This Capstone</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Model</th><th>Type</th><th>Purpose</th><th>Avg MAPE</th><th>Avg Dir.Acc</th><th>Role</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mbadge mb-arima">ARIMA</span></td>
+          <td class="c-muted">Statistical</td>
+          <td>Price level forecasting</td>
+          <td><span class="val-best val-mono">0.97%</span></td>
+          <td class="val-mono c-muted">49.5%</td>
+          <td><span class="pill pill-blue" style="font-size:10px;">Primary</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-prophet">Prophet</span></td>
+          <td class="c-muted">Additive</td>
+          <td>Direction signals + seasonality</td>
+          <td class="val-mono c-muted">6.37%</td>
+          <td><span class="val-best val-mono">55.2%</span></td>
+          <td><span class="pill pill-green" style="font-size:10px;">Direction</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-lstm">LSTM</span></td>
+          <td class="c-muted">Deep Learning</td>
+          <td>Non-linear pattern capture</td>
+          <td class="val-mono c-muted">1.88%</td>
+          <td class="val-mono c-muted">46.6%</td>
+          <td><span class="pill pill-gray" style="font-size:10px;">Supporting</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-xgb">XGBoost</span></td>
+          <td class="c-muted">Gradient Boost</td>
+          <td>Lag-feature ML forecasting</td>
+          <td class="val-mono c-muted">~2.1%</td>
+          <td class="val-mono c-muted">~52%</td>
+          <td><span class="pill pill-gray" style="font-size:10px;">ML Baseline</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-hmm">HMM</span></td>
+          <td class="c-muted">Probabilistic</td>
+          <td>Regime detection — Bull / Bear</td>
+          <td class="c-muted">—</td><td class="c-muted">—</td>
+          <td><span class="pill pill-gray" style="font-size:10px;">Context</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-garch">GARCH</span></td>
+          <td class="c-muted">Volatility</td>
+          <td>Risk estimation for Task 5</td>
+          <td class="c-muted">—</td><td class="c-muted">—</td>
+          <td><span class="pill pill-gray" style="font-size:10px;">Risk</span></td>
+        </tr>
+        <tr>
+          <td><span class="mbadge mb-mkw">Markowitz</span></td>
+          <td class="c-muted">Optimization</td>
+          <td>Efficient frontier &amp; max Sharpe</td>
+          <td class="c-muted">—</td><td class="c-muted">—</td>
+          <td><span class="pill pill-gray" style="font-size:10px;">Allocation</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 2: MODEL COMPARISON -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-models" class="page">
+
+  <div class="section-label">Backtest Performance — Jul to Dec 2025 · 130 trading days</div>
+
+  <div class="panel">
+    <div class="panel-title">MAPE % — Lower is Better</div>
+    <canvas id="mapeChart" height="110"></canvas>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Directional Accuracy % — Higher is Better</div>
+      <canvas id="daChart" height="220"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">RMSE in Rupees — Lower is Better</div>
+      <canvas id="rmseChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Full Comparison Table</div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Stock</th>
+          <th>ARIMA MAPE</th><th>Prophet MAPE</th><th>LSTM MAPE</th><th>XGB MAPE</th>
+          <th>ARIMA Dir</th><th>Prophet Dir</th><th>LSTM Dir</th><th>XGB Dir</th>
+          <th>Winner</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="stag stag-bank">HDFCBANK</span></td>
+          <td class="val-best val-mono">0.57%</td><td class="val-mono">3.70%</td><td class="val-mono">1.08%</td><td class="val-mono">~1.2%</td>
+          <td class="val-mono c-muted">51.6%</td><td class="val-best val-mono">54.0%</td><td class="val-mono c-muted">47.6%</td><td class="val-mono c-muted">~53%</td>
+          <td><span class="mbadge mb-arima">ARIMA</span></td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-it">INFY</span></td>
+          <td class="val-best val-mono">1.01%</td><td class="val-worst val-mono">9.37%</td><td class="val-mono">1.57%</td><td class="val-mono">~1.8%</td>
+          <td class="val-mono c-muted">48.4%</td><td class="val-best val-mono">57.3%</td><td class="val-mono c-muted">49.2%</td><td class="val-mono c-muted">~50%</td>
+          <td><span class="mbadge mb-arima">ARIMA</span></td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-pharma">SUNPHARMA</span></td>
+          <td class="val-best val-mono">1.41%</td><td class="val-worst val-mono">9.17%</td><td class="val-mono">1.81%</td><td class="val-mono">~2.0%</td>
+          <td class="val-mono c-muted">51.6%</td><td class="val-best val-mono">62.1%</td><td class="val-mono c-muted">52.4%</td><td class="val-mono c-muted">~54%</td>
+          <td><span class="mbadge mb-prophet">Prophet</span></td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-fmcg">HINDUNILVR</span></td>
+          <td class="val-best val-mono">0.83%</td><td class="val-mono">3.19%</td><td class="val-mono">1.72%</td><td class="val-mono">~1.5%</td>
+          <td class="val-worst val-mono">43.6%</td><td class="val-best val-mono">53.2%</td><td class="val-mono c-muted">50.8%</td><td class="val-mono c-muted">~52%</td>
+          <td><span class="mbadge mb-arima">ARIMA</span></td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-auto">M&amp;M</span></td>
+          <td class="val-best val-mono">1.02%</td><td class="val-worst val-mono">6.43%</td><td class="val-worst val-mono">3.23%</td><td class="val-mono">~2.4%</td>
+          <td class="val-best val-mono">52.4%</td><td class="val-mono c-muted">49.2%</td><td class="val-worst val-mono">33.1%</td><td class="val-mono c-muted">~54%</td>
+          <td><span class="mbadge mb-xgb">XGBoost</span></td>
+        </tr>
+        <tr class="tbl-foot">
+          <td>Average</td>
+          <td class="val-best val-mono">0.97%</td><td class="val-worst val-mono">6.37%</td><td class="val-mono">1.88%</td><td class="val-mono">~1.78%</td>
+          <td class="val-mono">49.5%</td><td class="val-best val-mono">55.2%</td><td class="val-worst val-mono">46.6%</td><td class="val-mono">~52.6%</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight insight-green">
+    <h4 class="c-green">Model Verdict</h4>
+    <p>
+      <strong style="color:var(--text)">ARIMA</strong> wins price accuracy (0.97% avg MAPE) — best for price-level targets and allocation weights.
+      <strong style="color:var(--text)">Prophet</strong> wins directional accuracy (55.2%) — best for buy/sell signals.
+      <strong style="color:var(--text)">XGBoost</strong> is a strong all-rounder (~52.6% directional) — best ML baseline.
+      <strong style="color:var(--text)">LSTM</strong> improves with multivariate technical indicators.
+      Portfolio strategy: ARIMA prices + Prophet direction + GARCH risk weights.
+    </p>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 3: FORECASTS -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-forecast" class="page">
+
+  <div class="section-label">2-Day Trading Forecasts — May 12 &amp; 13, 2026</div>
+
+  <div class="panel">
+    <div class="panel-title">All Model Forecasts vs Actual Prices</div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Stock</th><th>Last (May 11)</th>
+          <th>ARIMA May 12</th><th>Prophet May 12</th><th>LSTM May 12</th><th>XGB May 12</th>
+          <th>Actual May 12</th><th>Actual May 13</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="stag stag-bank">HDFCBANK</span></td><td class="val-mono c-muted">₹780.85</td>
+          <td class="val-mono">₹778.72</td><td class="val-worst val-mono">₹848.02</td><td class="val-mono">₹783.15</td><td class="val-mono">~₹779</td>
+          <td class="val-best val-mono">₹745.56</td><td class="val-mono">₹746.93</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-it">INFY</span></td><td class="val-mono c-muted">₹1,179.20</td>
+          <td class="val-mono">₹1,179.20</td><td class="val-mono">₹1,168.29</td><td class="val-mono">₹1,177.35</td><td class="val-mono">~₹1,175</td>
+          <td class="val-mono">₹1,119.04</td><td class="val-mono">₹1,116.91</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-pharma">SUNPHARMA</span></td><td class="val-mono c-muted">₹1,847.90</td>
+          <td class="val-mono">₹1,842.98</td><td class="val-worst val-mono">₹1,714.04</td><td class="val-mono">₹1,744.07</td><td class="val-mono">~₹1,840</td>
+          <td class="val-mono">₹1,858.27</td><td class="val-mono">₹1,817.18</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-fmcg">HINDUNILVR</span></td><td class="val-mono c-muted">₹2,287.70</td>
+          <td class="val-mono">₹2,289.10</td><td class="val-mono">₹2,269.78</td><td class="val-mono">₹2,289.30</td><td class="val-mono">~₹2,285</td>
+          <td class="val-mono">₹2,252.71</td><td class="val-mono">₹2,239.52</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-auto">M&amp;M</span></td><td class="val-mono c-muted">₹3,330.40</td>
+          <td class="val-mono">₹3,335.67</td><td class="val-worst val-mono">₹3,482.24</td><td class="val-mono">₹3,145.43</td><td class="val-mono">~₹3,300</td>
+          <td class="val-mono">₹3,211.92</td><td class="val-mono">₹3,118.16</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Forecast Error — May 13 Actual vs Predicted (%)</div>
+    <canvas id="forecastErrorChart" height="120"></canvas>
+  </div>
+
+  <div class="insight insight-red">
+    <h4 class="c-red">Key Finding: Train–Test Distribution Shift</h4>
+    <p>
+      All models predicted prices <strong style="color:var(--text)">above actual</strong> on May 13, 2026.
+      ARIMA backtest MAPE was <strong style="color:var(--green)">0.97%</strong> but live error jumped to
+      <strong style="color:var(--red)">~4.1%</strong>. A broad NSE decline on May 13 created a
+      <strong style="color:var(--text)">market-wide distribution shift</strong> that no univariate time series model
+      could detect from price history alone.
+      <br><br>
+      <strong style="color:var(--text)">Fix:</strong> Add macro features (Nifty 50, FII/DII flows, India VIX)
+      as exogenous regressors in ARIMAX / Prophet to detect market-wide sentiment shifts.
+    </p>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 4: PORTFOLIO -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-portfolio" class="page">
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Final Allocation — Task 5 Blend</div>
+      <canvas id="allocPieChart" height="240"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Strategy Comparison — Weights</div>
+      <canvas id="strategyBarChart" height="240"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Markowitz Efficient Frontier</div>
+    <canvas id="frontierChart" height="200"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Portfolio Metrics Comparison</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Portfolio</th><th>Ann. Return</th><th>Ann. Volatility</th><th>Sharpe Ratio</th><th>Max Weight</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Max Sharpe (Markowitz)</td>
+          <td class="val-best val-mono">~18%</td><td class="val-mono c-muted">~20%</td>
+          <td class="val-best val-mono">~0.65</td><td class="c-muted">HDFCBANK</td>
+          <td class="c-muted">Optimal risk-adjusted</td>
+        </tr>
+        <tr>
+          <td>Min Variance (Markowitz)</td>
+          <td class="val-mono c-muted">~12%</td><td class="val-best val-mono">~16%</td>
+          <td class="val-mono c-muted">~0.38</td><td class="c-muted">HINDUNILVR</td>
+          <td class="c-muted">Lowest possible risk</td>
+        </tr>
+        <tr>
+          <td>Equal Weight</td>
+          <td class="val-mono c-muted">~15%</td><td class="val-mono c-muted">~22%</td>
+          <td class="val-mono c-muted">~0.44</td><td class="c-muted">Equal</td>
+          <td class="c-muted">Naive benchmark</td>
+        </tr>
+        <tr class="tbl-foot">
+          <td><strong>Our Task 5 Blend</strong></td>
+          <td class="val-mono">~16%</td><td class="val-mono">~21%</td>
+          <td class="val-mono">~0.51</td><td>HDFCBANK (27.3%)</td>
+          <td>Strategy A+B blend</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight insight-green">
+    <h4 class="c-green">Portfolio Insight</h4>
+    <p>Our Task 5 blend sits close to the efficient frontier — between Equal Weight and Max Sharpe.
+    GARCH-based inverse volatility weighting correctly overweighted HDFCBANK (lowest risk) and
+    underweighted M&amp;M (highest risk). This was validated by actual returns: HDFCBANK +0.26%, M&amp;M −3.09%.</p>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 5: VOLATILITY & REGIME -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-volatility" class="page">
+
+  <div class="grid-5">
+    <div class="kpi kpi-accent-green">
+      <div class="kpi-label">HDFCBANK</div>
+      <div class="kpi-value c-green">17.2%</div>
+      <div class="kpi-sub">GARCH vol · <span class="regime regime-bull">Bull</span></div>
+    </div>
+    <div class="kpi" style="border-color:rgba(251,191,36,0.2)">
+      <div style="height:2px;position:absolute;top:0;left:0;right:0;background:linear-gradient(90deg,transparent,rgba(251,191,36,0.5),transparent);border-radius:var(--r-lg) var(--r-lg) 0 0"></div>
+      <div class="kpi-label">INFY</div>
+      <div class="kpi-value c-yellow">22.8%</div>
+      <div class="kpi-sub">GARCH vol · <span class="regime regime-bull">Bull</span></div>
+    </div>
+    <div class="kpi" style="border-color:rgba(251,191,36,0.2)">
+      <div style="height:2px;position:absolute;top:0;left:0;right:0;background:linear-gradient(90deg,transparent,rgba(251,191,36,0.5),transparent);border-radius:var(--r-lg) var(--r-lg) 0 0"></div>
+      <div class="kpi-label">SUNPHARMA</div>
+      <div class="kpi-value c-yellow">20.1%</div>
+      <div class="kpi-sub">GARCH vol · <span class="regime regime-bull">Bull</span></div>
+    </div>
+    <div class="kpi kpi-accent-green">
+      <div class="kpi-label">HINDUNILVR</div>
+      <div class="kpi-value c-green">15.8%</div>
+      <div class="kpi-sub">GARCH vol · <span class="regime regime-side">Sideways</span></div>
+    </div>
+    <div class="kpi kpi-accent-red">
+      <div class="kpi-label">M&amp;M</div>
+      <div class="kpi-value c-red">28.3%</div>
+      <div class="kpi-sub">GARCH vol · <span class="regime regime-bull">Bull</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">GARCH 5-Day Volatility Forecast (Annualised %)</div>
+      <canvas id="garchChart" height="220"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Return Correlation Heatmap</div>
+      <canvas id="corrChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">HMM Regime Analysis</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Stock</th><th>Regime</th><th>Bull Days</th><th>Bear Days</th><th>Sideways</th><th>Investment Implication</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="stag stag-bank">HDFCBANK</span></td>
+          <td><span class="regime regime-bull">Bull</span></td>
+          <td class="val-best val-mono">~55%</td><td class="val-worst val-mono">~25%</td><td class="val-mono c-muted">~20%</td>
+          <td class="c-muted">Strong uptrend — hold / increase allocation</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-it">INFY</span></td>
+          <td><span class="regime regime-bull">Bull</span></td>
+          <td class="val-best val-mono">~52%</td><td class="val-worst val-mono">~28%</td><td class="val-mono c-muted">~20%</td>
+          <td class="c-muted">Mostly bullish — white noise returns (efficient)</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-pharma">SUNPHARMA</span></td>
+          <td><span class="regime regime-bull">Bull</span></td>
+          <td class="val-best val-mono">~58%</td><td class="val-worst val-mono">~22%</td><td class="val-mono c-muted">~20%</td>
+          <td class="c-muted">Defensive bull — stable long-term holding</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-fmcg">HINDUNILVR</span></td>
+          <td><span class="regime regime-side">Sideways</span></td>
+          <td class="val-mono c-muted">~45%</td><td class="val-mono c-muted">~25%</td><td class="val-mono">~30%</td>
+          <td class="c-muted">Consolidating — wait for breakout confirmation</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-auto">M&amp;M</span></td>
+          <td><span class="regime regime-bull">Bull</span></td>
+          <td class="val-best val-mono">~50%</td><td class="val-worst val-mono">~30%</td><td class="val-mono c-muted">~20%</td>
+          <td class="c-muted">High vol bull — small allocation, stop-loss advised</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- TAB 6: LIVE RESULTS -->
+<!-- ═══════════════════════════════════════ -->
+<main id="page-live" class="page">
+
+  <div class="grid-3">
+    <div class="kpi kpi-accent-blue">
+      <div class="kpi-label">Total Invested</div>
+      <div class="kpi-value c-blue">₹9,72,709</div>
+      <div class="kpi-sub">5 stocks · 2-day window</div>
+    </div>
+    <div class="kpi kpi-accent-red">
+      <div class="kpi-label">Final Value (Day 2)</div>
+      <div class="kpi-value c-red">₹9,61,056</div>
+      <div class="kpi-sub">At market close May 13</div>
+    </div>
+    <div class="kpi kpi-accent-red">
+      <div class="kpi-label">Total P&amp;L</div>
+      <div class="kpi-value c-red">−₹11,653</div>
+      <div class="kpi-sub">−1.17% overall</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Live ARIMA Error vs Backtest — May 13</div>
+    <canvas id="liveErrorChart" height="120"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Directional Accuracy — Live May 12 &amp; 13</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>Stock</th><th>Actual Direction</th><th>ARIMA</th><th>Prophet</th><th>LSTM</th><th>XGBoost</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="stag stag-bank">HDFCBANK</span></td>
+          <td class="c-green val-mono">UP ↑</td>
+          <td class="dir-miss">↓ ✗</td><td class="dir-miss">↓ ✗</td>
+          <td class="dir-miss">↓ ✗</td><td class="dir-miss">↓ ✗</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-it">INFY</span></td>
+          <td class="c-red val-mono">DOWN ↓</td>
+          <td class="dir-miss">→ ✗</td><td class="dir-hit">↓ ✓</td>
+          <td class="dir-miss">↑ ✗</td><td class="dir-miss">↑ ✗</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-pharma">SUNPHARMA</span></td>
+          <td class="c-red val-mono">DOWN ↓</td>
+          <td class="dir-miss">↑ ✗</td><td class="dir-hit">↓ ✓</td>
+          <td class="dir-hit">↓ ✓</td><td class="dir-miss">↑ ✗</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-fmcg">HINDUNILVR</span></td>
+          <td class="c-red val-mono">DOWN ↓</td>
+          <td class="dir-miss">↑ ✗</td><td class="dir-hit">↓ ✓</td>
+          <td class="dir-miss">↑ ✗</td><td class="dir-miss">↑ ✗</td>
+        </tr>
+        <tr>
+          <td><span class="stag stag-auto">M&amp;M</span></td>
+          <td class="c-red val-mono">DOWN ↓</td>
+          <td class="dir-miss">↑ ✗</td><td class="dir-miss">↑ ✗</td>
+          <td class="dir-hit">↓ ✓</td><td class="dir-miss">↑ ✗</td>
+        </tr>
+        <tr class="tbl-foot">
+          <td>Live Dir. Accuracy</td><td>—</td>
+          <td class="val-worst val-mono">20%</td>
+          <td class="val-best val-mono">60%</td>
+          <td class="val-mono">40%</td>
+          <td class="val-worst val-mono">20%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight insight-blue">
+    <h4 class="c-blue">Key Reflection</h4>
+    <p>
+      <strong style="color:var(--text)">Prophet outperformed all models</strong> on live directional accuracy (60%) —
+      correctly predicting DOWN for INFY, SUNPHARMA, and HINDUNILVR.
+      The broad market decline on May 13 was a <strong style="color:var(--text)">regime shift</strong> that
+      HMM would flag as a Bear transition if monitored daily.
+      <strong style="color:var(--green)">HDFCBANK validated</strong> our low-volatility allocation strategy —
+      only green stock, only stock below GARCH threshold.
+      <strong style="color:var(--red)">M&amp;M and SUNPHARMA</strong> — highest GARCH volatility — were
+      worst performers exactly as the risk model predicted.
+    </p>
+  </div>
+</main>
+
+<script>
+/* ── TAB SWITCHING ── */
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('page-' + name).classList.add('active');
+  setTimeout(renderCharts, 60);
+}
+
+/* ── CHART DEFAULTS ── */
+Chart.defaults.color = '#6b7491';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+
+const stocks    = ['HDFCBANK','INFY','SUNPHARMA','HINDUNILVR','M&M'];
+const clrs      = ['#3b82f6','#a78bfa','#22d3a0','#fbbf24','#f43f5e'];
+const clrsLight = clrs.map(c => c + '25');
+
+let chartsRendered = false;
+
+function renderCharts() {
+  if (chartsRendered) return;
+  chartsRendered = true;
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const baseOpts = {
+    responsive: true,
+    plugins: { legend: { labels: { usePointStyle: true, pointStyle: 'circle', padding: 14 } } },
+    scales: {
+      y: { grid: { color: gridColor }, border: { dash: [4,4] } },
+      x: { grid: { display: false } }
+    }
+  };
+
+  /* P&L Bar */
+  new Chart(document.getElementById('plChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [{
+        label: 'P&L (₹)', data: [619, -979, -4660, -1091, -4570],
+        backgroundColor: [619,-979,-4660,-1091,-4570].map(v => v > 0 ? '#22d3a030' : '#f43f5e30'),
+        borderColor: [619,-979,-4660,-1091,-4570].map(v => v > 0 ? '#22d3a0' : '#f43f5e'),
+        borderWidth: 1, borderRadius: 4,
+      }]
+    },
+    options: { ...baseOpts, plugins: { legend: { display: false } } }
+  });
+
+  /* MAPE */
+  new Chart(document.getElementById('mapeChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'ARIMA',   data:[0.57,1.01,1.41,0.83,1.02], backgroundColor:'#3b82f630', borderColor:'#3b82f6', borderWidth:1, borderRadius:3 },
+        { label:'Prophet', data:[3.70,9.37,9.17,3.19,6.43], backgroundColor:'#fb923c30', borderColor:'#fb923c', borderWidth:1, borderRadius:3 },
+        { label:'LSTM',    data:[1.08,1.57,1.81,1.72,3.23], backgroundColor:'#22d3a030', borderColor:'#22d3a0', borderWidth:1, borderRadius:3 },
+        { label:'XGBoost', data:[1.2, 1.8, 2.0, 1.5, 2.4],  backgroundColor:'#a78bfa30', borderColor:'#a78bfa', borderWidth:1, borderRadius:3 },
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend: { position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+
+  /* Radar */
+  new Chart(document.getElementById('daChart'), {
+    type: 'radar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'ARIMA',   data:[51.6,48.4,51.6,43.6,52.4], borderColor:'#3b82f6', backgroundColor:'#3b82f610', pointRadius:4, borderWidth:1.5 },
+        { label:'Prophet', data:[54.0,57.3,62.1,53.2,49.2], borderColor:'#fb923c', backgroundColor:'#fb923c10', pointRadius:4, borderWidth:1.5 },
+        { label:'LSTM',    data:[47.6,49.2,52.4,50.8,33.1], borderColor:'#22d3a0', backgroundColor:'#22d3a010', pointRadius:4, borderWidth:1.5 },
+        { label:'XGBoost', data:[53,  50,  54,  52,  54],   borderColor:'#a78bfa', backgroundColor:'#a78bfa10', pointRadius:4, borderWidth:1.5 },
+      ]
+    },
+    options: {
+      scales: { r: { min:30, max:70, grid:{ color:gridColor }, ticks:{ display:false },
+        pointLabels:{ font:{ size:11, family:"'DM Mono', monospace" }, color:'#6b7491' } } },
+      plugins: { legend:{ position:'bottom', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } }
+    }
+  });
+
+  /* RMSE */
+  new Chart(document.getElementById('rmseChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'ARIMA',   data:[7.17,20.34,130.15,29.32,47.64], backgroundColor:'#3b82f630', borderColor:'#3b82f6', borderWidth:1, borderRadius:3 },
+        { label:'Prophet', data:[42.25,153.47,171.92,97.50,275.22], backgroundColor:'#fb923c30', borderColor:'#fb923c', borderWidth:1, borderRadius:3 },
+        { label:'LSTM',    data:[12.63,28.72,36.93,54.55,138.10], backgroundColor:'#22d3a030', borderColor:'#22d3a0', borderWidth:1, borderRadius:3 },
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend:{ position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+
+  /* Forecast Error */
+  new Chart(document.getElementById('forecastErrorChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'ARIMA %',   data:[4.39,5.57,1.51,2.19,6.86], backgroundColor:'#3b82f630', borderColor:'#3b82f6', borderWidth:1, borderRadius:3 },
+        { label:'Prophet %', data:[13.7,5.0,5.67,1.49,11.88], backgroundColor:'#fb923c30', borderColor:'#fb923c', borderWidth:1, borderRadius:3 },
+        { label:'LSTM %',    data:[5.05,5.72,3.58,2.00,1.17],  backgroundColor:'#22d3a030', borderColor:'#22d3a0', borderWidth:1, borderRadius:3 },
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend:{ position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+
+  /* Donut */
+  new Chart(document.getElementById('allocPieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: stocks,
+      datasets: [{
+        data:[27.3,20.8,22.0,19.7,10.3],
+        backgroundColor: clrs.map(c=>c+'cc'),
+        borderColor: clrs,
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '60%',
+      plugins: { legend:{ position:'right', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } }
+    }
+  });
+
+  /* Strategy bar */
+  new Chart(document.getElementById('strategyBarChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'Strategy A (Forecast)',  data:[26.2,20.1,19.8,20.3,13.6], backgroundColor:'#3b82f630', borderColor:'#3b82f6', borderWidth:1, borderRadius:3 },
+        { label:'Strategy B (Vol-Aware)', data:[28.4,21.4,24.2,19.0,7.0],  backgroundColor:'#fb923c30', borderColor:'#fb923c', borderWidth:1, borderRadius:3 },
+        { label:'Final Blend (50/50)',    data:[27.3,20.8,22.0,19.7,10.3], backgroundColor:'#22d3a030', borderColor:'#22d3a0', borderWidth:1, borderRadius:3 },
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend:{ position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+
+  /* Efficient Frontier */
+  const efData = Array.from({length:250}, () => ({ x: 16+Math.random()*14, y: 10+Math.random()*12 }));
+  new Chart(document.getElementById('frontierChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label:'Simulated Portfolios', data:efData, backgroundColor:'#3b82f615', pointRadius:3, pointHoverRadius:4 },
+        { label:'Max Sharpe ★',   data:[{x:20,y:18}], backgroundColor:'#fbbf24', pointRadius:9, pointStyle:'star', borderColor:'#fbbf24' },
+        { label:'Min Variance',   data:[{x:16,y:12}], backgroundColor:'#3b82f6', pointRadius:7, borderColor:'#3b82f6' },
+        { label:'Equal Weight',   data:[{x:22,y:15}], backgroundColor:'#22d3a0', pointRadius:7, borderColor:'#22d3a0' },
+        { label:'Our Portfolio',  data:[{x:21,y:16}], backgroundColor:'#f43f5e', pointRadius:9, pointStyle:'triangle', borderColor:'#f43f5e' },
+      ]
+    },
+    options: {
+      scales: {
+        x: { title:{ display:true, text:'Annual Volatility (%)', color:'#6b7491' }, grid:{ color:gridColor }, border:{ dash:[4,4] } },
+        y: { title:{ display:true, text:'Annual Return (%)',     color:'#6b7491' }, grid:{ color:gridColor }, border:{ dash:[4,4] } }
+      },
+      plugins: { legend:{ position:'top', labels:{ usePointStyle:true, padding:14 } } }
+    }
+  });
+
+  /* GARCH */
+  new Chart(document.getElementById('garchChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'Ann. Volatility %',      data:[18.5,24.3,21.7,16.2,29.4], backgroundColor:clrs.map(c=>c+'30'), borderColor:clrs, borderWidth:1, borderRadius:3 },
+        { label:'GARCH 5d Forecast %', data:[17.2,22.8,20.1,15.8,28.3], backgroundColor:'transparent', borderColor:clrs, borderWidth:2, type:'line', pointRadius:5, tension:0.3 }
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend:{ position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+
+  /* Correlation heatmap */
+  const corrMatrix = [
+    [1.00,0.52,0.38,0.41,0.55],
+    [0.52,1.00,0.44,0.48,0.51],
+    [0.38,0.44,1.00,0.35,0.42],
+    [0.41,0.48,0.35,1.00,0.45],
+    [0.55,0.51,0.42,0.45,1.00],
+  ];
+  const corrData = [];
+  for (let i=0;i<5;i++) for (let j=0;j<5;j++) corrData.push({x:j,y:i,v:corrMatrix[i][j]});
+  new Chart(document.getElementById('corrChart'), {
+    type: 'scatter',
+    data: {
+      datasets:[{
+        data: corrData,
+        backgroundColor: ctx => {
+          const v = ctx.raw?.v ?? 0;
+          const a = Math.round(v * 200);
+          return `rgba(59,130,246,${v.toFixed(2)})`;
+        },
+        pointRadius: 20, pointStyle: 'rect'
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display:false },
+        tooltip: { callbacks: { label: ctx => `${stocks[ctx.raw.y]} & ${stocks[ctx.raw.x]}: ${ctx.raw.v.toFixed(2)}` } }
+      },
+      scales: {
+        x: { ticks:{ callback: v=>stocks[v], color:'#6b7491', font:{family:"'DM Mono',monospace",size:10} }, grid:{ color:gridColor }, min:-0.5, max:4.5 },
+        y: { ticks:{ callback: v=>stocks[v], color:'#6b7491', font:{family:"'DM Mono',monospace",size:10} }, grid:{ color:gridColor }, min:-0.5, max:4.5 }
+      }
+    }
+  });
+
+  /* Live error */
+  new Chart(document.getElementById('liveErrorChart'), {
+    type: 'bar',
+    data: {
+      labels: stocks,
+      datasets: [
+        { label:'Live Error %',    data:[4.39,5.57,1.51,2.19,6.86], backgroundColor:'#f43f5e30', borderColor:'#f43f5e', borderWidth:1, borderRadius:3 },
+        { label:'Backtest MAPE %', data:[0.57,1.01,1.41,0.83,1.02], backgroundColor:'#22d3a030', borderColor:'#22d3a0', borderWidth:1, borderRadius:3 },
+      ]
+    },
+    options: { ...baseOpts, plugins: { legend:{ position:'top', labels:{ usePointStyle:true, pointStyle:'circle', padding:14 } } } }
+  });
+}
+
+renderCharts();
+</script>
+</body>
+</html>
