@@ -109,7 +109,7 @@ cd Stock-Analysis-StockGro
 pip install yfinance pandas numpy statsmodels tensorflow prophet arch xgboost hmmlearn matplotlib scikit-learn
 
 # Run notebooks in order
-# Task1 → Task2 → Task3 (a/b/c) → Task4 → Task5 → Task6 → Task7 → Task8
+# Task1 → Task2 → Task3 (a/b/c/d/e) → Task4 → Task5 → Task6 → Task7 → Task8
 ```
 
 > **Note:** Run Task 2 first and save the CSV outputs before running Tasks 3–8, to ensure all notebooks use the same canonical dataset.
