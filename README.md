@@ -7,7 +7,7 @@
 
 ## 🔴 Live Dashboard
 
-**[→ View Interactive Dashboard](https://arpita-rathwa.github.io/Stock-Analysis-StockGro/Task0_Bonus_Dashboard.html)**
+**[→ View Interactive Dashboard](https://stock-analysis-stock-gro.vercel.app/Task0_Bonus_Dashboard.html)**
 
 ---
 
